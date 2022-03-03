@@ -7,6 +7,10 @@ if (!MathQuill) throw new Error('MathQuill is required but has not been loaded')
 const keyCodes = {
     ENTER: 13,
     ESC: 27,
+    LEFT: 37,
+    RIGHT: 39,
+    BACKSPACE: 8,
+    DELETE: 46,
     Z: 90,
     Y: 89,
 }
@@ -85,7 +89,47 @@ export function init(
 
     function onEditorKeydown(e) {
         if ($('.rich-text-editor-overlay').is(':visible')) return
-        if (u.isCtrlKey(e, keyCodes.ENTER) || u.isKey(e, keyCodes.ESC)) closeMathEditor(true)
+
+        if (u.isCtrlKey(e, keyCodes.RIGHT))           far(true, false, false)
+        else if (u.isShiftCtrlKey(e, keyCodes.RIGHT)) far(true, true, false)
+        else if (u.isCtrlKey(e, keyCodes.LEFT))       far(false, false)
+        else if (u.isShiftCtrlKey(e, keyCodes.LEFT))  far(false, true)
+        else if (u.isCtrlKey(e, keyCodes.DELETE))     far(true, false, true)
+        else if (u.isCtrlKey(e, keyCodes.BACKSPACE))  far(false, false, true)
+        else if (u.isCtrlKey(e, keyCodes.ENTER) || u.isKey(e, keyCodes.ESC)) closeMathEditor(true)
+    }
+
+    function far(isMovingRight, isSelecting, isDeleting) {
+
+        // shift causes infinite loop in some scenarios because of its stupid stupid structure
+        let cursor = () => isSelecting ? $(".mq-selection") : $(".mq-cursor")
+        let direction = () => isMovingRight ? 'Right' : 'Left'
+        let nextSymbol = () => isMovingRight ? cursor().next() : cursor().prev()
+        let isNextSymbolOperator = () => nextSymbol().attr('class') ? nextSymbol().attr('class').includes('operator') : ''
+        let isNextSymbolSpace = () => nextSymbol().text().startsWith('\xa0')
+        let isNextSymbolSpan = () => nextSymbol().is('span') && nextSymbol().attr('class')
+
+        if (nextSymbol().children().length === 0) {
+            let wasFirstSymbolSpan = isNextSymbolSpan() 
+            let wasFirstSymbolOperator = isNextSymbolOperator()
+            let wasFirstSymbolSpace = isNextSymbolSpace()
+            let key = isSelecting ? 'Shift-' + direction() : (isDeleting ? (isMovingRight ? 'Del' : 'Backspace') : direction())
+            while (true) {
+                mqInstance.keystroke(key)
+                if (isNextSymbolOperator() != wasFirstSymbolOperator ||
+                    isNextSymbolSpace() != wasFirstSymbolSpace ||
+                    isNextSymbolSpan() != wasFirstSymbolSpan ||
+                    nextSymbol().children().length !== 0 ||
+                    cursor().is(`:${isMovingRight ? 'last' : 'first'}-child`)
+                ) return
+            }
+        } else {
+            let finalKey
+            if (isSelecting) finalKey = ''
+            else if (isMovingRight) finalKey = isDeleting ? 'Del' : 'Backspace'
+            else finalKey = direction()
+            mqInstance.keystroke(`Shift-${direction()} ${finalKey}`)
+        }
     }
 
     return {

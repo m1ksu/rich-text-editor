@@ -72,6 +72,10 @@ export function isCtrlKey(e, key) {
     return preventIfTrue(e, !e.altKey && !e.shiftKey && e.ctrlKey && keyOrKeyCode(e, key))
 }
 
+export function isShiftCtrlKey(e, key) {
+    return preventIfTrue(e, !e.altKey && e.shiftKey && e.ctrlKey && keyOrKeyCode(e, key))
+}
+
 function keyOrKeyCode(e, val) {
     return typeof val === 'string' ? e.key === val : e.keyCode === val
 }
