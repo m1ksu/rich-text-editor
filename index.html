@@ -58,7 +58,7 @@
       updateMath(latex, svg => {
         $img.prop({
           src: svg,
-          alt: latex.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
+          alt: latex.includes('\\ce') ? latex : latex.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
         })
         $img.closest('[data-js="answer"]').trigger('input')
       })

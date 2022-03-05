@@ -9,8 +9,10 @@ const keyCodes = {
     ESC: 27,
     LEFT: 37,
     RIGHT: 39,
-    BACKSPACE: 8,
-    DELETE: 46,
+    // BACKSPACE: 8,
+    // DELETE: 46,
+    BACKSPACE: 88,
+    DELETE: 89,
     Z: 90,
     Y: 89,
 }
@@ -28,7 +30,7 @@ export function init(
     baseUrl,
     updateMathImg = ($img, latex) => {
         const trimmed = trimLatex(latex)
-        const trimmedAlt = trimmed.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
+        const trimmedAlt = trimmed.includes('\\ce') ? trimmed : trimmed.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
         $img.prop({
             src: baseUrl + '/math.svg?latex=' + encodeURIComponent(trimmed),
             alt: trimmedAlt,
@@ -102,7 +104,8 @@ export function init(
     function far(isMovingRight, isSelecting, isDeleting) {
 
         // shift causes infinite loop in some scenarios because of its stupid stupid structure
-        let cursor = () => isSelecting ? $(".mq-selection") : $(".mq-cursor")
+        // deleting doesn't functio on trig functions as they change away from being operators upon deletion of a character
+        let cursor = () => (isSelecting || isDeleting) && $(".mq-selection").length != 0 ? $(".mq-selection") : $(".mq-cursor")
         let direction = () => isMovingRight ? 'Right' : 'Left'
         let nextSymbol = () => isMovingRight ? cursor().next() : cursor().prev()
         let isNextSymbolOperator = () => nextSymbol().attr('class') ? nextSymbol().attr('class').includes('operator') : ''
@@ -113,7 +116,7 @@ export function init(
             let wasFirstSymbolSpan = isNextSymbolSpan() 
             let wasFirstSymbolOperator = isNextSymbolOperator()
             let wasFirstSymbolSpace = isNextSymbolSpace()
-            let key = isSelecting ? 'Shift-' + direction() : (isDeleting ? (isMovingRight ? 'Del' : 'Backspace') : direction())
+            let key = isSelecting || isDeleting ? 'Shift-' + direction() : direction()
             while (true) {
                 mqInstance.keystroke(key)
                 if (isNextSymbolOperator() != wasFirstSymbolOperator ||
@@ -121,12 +124,15 @@ export function init(
                     isNextSymbolSpan() != wasFirstSymbolSpan ||
                     nextSymbol().children().length !== 0 ||
                     cursor().is(`:${isMovingRight ? 'last' : 'first'}-child`)
-                ) return
+                ) {
+                    if (isDeleting) mqInstance.keystroke('Backspace')
+                    return
+                }
             }
         } else {
             let finalKey
             if (isSelecting) finalKey = ''
-            else if (isMovingRight) finalKey = isDeleting ? 'Del' : 'Backspace'
+            else if (isDeleting) finalKey = isMovingRight ? 'Del' : 'Backspace'
             else finalKey = direction()
             mqInstance.keystroke(`Shift-${direction()} ${finalKey}`)
         }
